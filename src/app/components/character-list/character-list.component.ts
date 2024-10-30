@@ -8,6 +8,7 @@ import { NgbModal} from '@ng-bootstrap/ng-bootstrap'
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { NotFoundModalComponent } from '../not-found-modal/not-found-modal.component';
 
 @Component({
   selector: 'app-character-list',
@@ -22,6 +23,7 @@ export class CharacterListComponent implements OnInit{
   private readonly modalService = inject(NgbModal);
   currentPage = 0;
   totalPages = 0;
+  isLoading:boolean = false;
   searchFilter:FormControl = new FormControl('');
 
   previousPage(){
@@ -35,16 +37,22 @@ export class CharacterListComponent implements OnInit{
     if(this.currentPage<this.totalPages){
       this.currentPage++;
       this.getCharacters();
-    } 
+    }
   }
 
   getCharacters(){
     let name = this.searchFilter.value;
-    this.characterService.getCharacters(name,this.currentPage).subscribe((data)=>{
-      console.log(data);
-      this.totalPages=data.info.pages;
-      this.characterLst=data.results;
-    })
+    this.isLoading=true;
+    this.characterService.getCharacters(name,this.currentPage).subscribe(
+      (data)=>{
+        this.totalPages=data.info.pages;
+        this.characterLst=data.results;
+      },
+      (error)=>{
+        this.modalService.open(NotFoundModalComponent);
+      }
+    );
+    this.isLoading=false;
   }
 
   ngOnInit(): void {
