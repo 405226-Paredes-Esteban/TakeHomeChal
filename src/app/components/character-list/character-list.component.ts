@@ -5,6 +5,9 @@ import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormControl} from '@angular/forms';
 import { CharacterModalComponent } from '../character-modal/character-modal.component';
 import { NgbModal} from '@ng-bootstrap/ng-bootstrap'
+import { debounceTime, distinctUntilChanged } from 'rxjs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 @Component({
   selector: 'app-character-list',
@@ -19,8 +22,7 @@ export class CharacterListComponent implements OnInit{
   private readonly modalService = inject(NgbModal);
   currentPage = 0;
   totalPages = 0;
-  
-  filterForm:FormGroup= new FormGroup({name:new FormControl('')})
+  searchFilter:FormControl = new FormControl('');
 
   previousPage(){
     if(this.currentPage!=1){
@@ -37,7 +39,7 @@ export class CharacterListComponent implements OnInit{
   }
 
   getCharacters(){
-    let name = this.filterForm.controls['name'].value;
+    let name = this.searchFilter.value;
     this.characterService.getCharacters(name,this.currentPage).subscribe((data)=>{
       console.log(data);
       this.totalPages=data.info.pages;
@@ -46,6 +48,7 @@ export class CharacterListComponent implements OnInit{
   }
 
   ngOnInit(): void {
+    this.setupNameSubscription();
     this.currentPage=1;
     this.getCharacters();
   }
@@ -54,4 +57,55 @@ export class CharacterListComponent implements OnInit{
     const modalRef = this.modalService.open(CharacterModalComponent);
     modalRef.componentInstance.character = c
   }
+
+  private setupNameSubscription(): void {
+    this.searchFilter.valueChanges
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged()
+      )
+      .subscribe(() => this.getCharacters());
+  }
+
+  exportPdf() {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+  
+    const title = 'Character List';
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    const tableColumn = ['Name', 'Status', 'Species', 'Type', 'Gender','Origin','Location','Created At'];
+    const tableRows: any[][] = [];
+    
+    this.characterLst.forEach(char => {
+      const createdAt = new Date(char.created).toISOString().split('T')[0];
+        const [year, month, day] = createdAt.split('-');
+        const formattedDate = `${day}/${month}/${year}`;
+  
+      const charData = [
+        char.name,
+        char.status,
+        char.species,
+        char.type,
+        char.gender,
+        char.origin.name,
+        char.location.name,
+        createdAt
+      ];
+      tableRows.push(charData);
+    });
+  
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 25
+    });
+    
+    doc.save('character-list.pdf');
+  }
+  
 }
