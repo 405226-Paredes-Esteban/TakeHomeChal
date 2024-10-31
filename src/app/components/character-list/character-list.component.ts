@@ -82,7 +82,7 @@ export class CharacterListComponent implements OnInit{
       format: 'a4',
     });
   
-    const title = 'Character List';
+    const title = 'Character List: '+ new Date().toLocaleDateString();
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
     doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
@@ -98,7 +98,7 @@ export class CharacterListComponent implements OnInit{
         char.name,
         char.status,
         char.species,
-        char.type,
+        char.type||'-',
         char.gender,
         char.origin.name,
         char.location.name,
